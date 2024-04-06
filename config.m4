@@ -880,6 +880,7 @@ if test "$PHP_GRPC" != "no"; then
     src/core/xds/xds_client/xds_bootstrap.cc \
     src/core/xds/xds_client/xds_client.cc \
     src/core/xds/xds_client/xds_client_stats.cc \
+    src/php/ext/grpc/batch.c \
     src/php/ext/grpc/byte_buffer.c \
     src/php/ext/grpc/call.c \
     src/php/ext/grpc/call_credentials.c \
