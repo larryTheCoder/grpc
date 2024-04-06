@@ -64,7 +64,7 @@ zend_module_entry grpc_module_entry = {
   PHP_MINIT(grpc),
   PHP_MSHUTDOWN(grpc),
   PHP_RINIT(grpc),
-  NULL,
+  PHP_RSHUTDOWN(grpc),
   PHP_MINFO(grpc),
   PHP_GRPC_VERSION,
   PHP_MODULE_GLOBALS(grpc),
@@ -188,6 +188,9 @@ void postfork_child() {
 
   // clear completion queue
   grpc_php_shutdown_completion_queue(TSRMLS_C);
+
+  // clear async queue
+  grpc_php_shutdown_next_queue(TSRMLS_C);
 
   // clean-up grpc_core
   grpc_shutdown();
@@ -529,18 +532,11 @@ PHP_MINIT_FUNCTION(grpc) {
  */
 PHP_MSHUTDOWN_FUNCTION(grpc) {
   UNREGISTER_INI_ENTRIES();
-  // WARNING: This function IS being called by PHP when the extension
-  // is unloaded but the logs were somehow suppressed.
-  if (GRPC_G(initialized)) {
-    zend_hash_clean(&grpc_persistent_list);
-    zend_hash_destroy(&grpc_persistent_list);
-    zend_hash_clean(&grpc_target_upper_bound_map);
-    zend_hash_destroy(&grpc_target_upper_bound_map);
-    grpc_shutdown_timeval(TSRMLS_C);
-    grpc_php_shutdown_completion_queue(TSRMLS_C);
-    grpc_shutdown();
-    GRPC_G(initialized) = 0;
-  }
+  zend_hash_clean(&grpc_persistent_list);
+  zend_hash_destroy(&grpc_persistent_list);
+  zend_hash_clean(&grpc_target_upper_bound_map);
+  zend_hash_destroy(&grpc_target_upper_bound_map);
+
   return SUCCESS;
 }
 /* }}} */
@@ -563,9 +559,26 @@ PHP_RINIT_FUNCTION(grpc) {
     apply_ini_settings(TSRMLS_C);
     grpc_init();
     register_fork_handlers();
+    grpc_php_init_next_queue(TSRMLS_C);
     grpc_php_init_completion_queue(TSRMLS_C);
     GRPC_G(initialized) = 1;
   }
+  return SUCCESS;
+}
+/* }}} */
+
+/* {{{ PHP_RSHUTDOWN_FUNCTION
+ */
+PHP_RSHUTDOWN_FUNCTION(grpc) {
+  if (GRPC_G(initialized)) {
+    grpc_shutdown_timeval(TSRMLS_C);
+    grpc_php_shutdown_next_queue(TSRMLS_C);
+    grpc_php_shutdown_completion_queue(TSRMLS_C);
+    grpc_shutdown();
+
+    GRPC_G(initialized) = 0;
+  }
+
   return SUCCESS;
 }
 /* }}} */

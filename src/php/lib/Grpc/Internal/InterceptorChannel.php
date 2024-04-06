@@ -19,6 +19,9 @@
 
 namespace Grpc\Internal;
 
+use Grpc\Internal\Channel;
+use Grpc\Internal\Interceptor;
+
 /**
  * This is a PRIVATE API and can change without notice.
  */

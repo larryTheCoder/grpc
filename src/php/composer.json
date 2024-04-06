@@ -5,7 +5,8 @@
   "version": "1.77.0",
   "require": {
     "php": ">=7.1.0",
-    "google/protobuf": "^v3.3.0"
+    "google/protobuf": "^v3.3.0",
+    "sof3/await-generator": "^3.6"
   },
   "require-dev": {
     "google/auth": "^v1.3.0"

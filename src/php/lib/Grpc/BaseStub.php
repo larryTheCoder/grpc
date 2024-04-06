@@ -19,6 +19,11 @@
 
 namespace Grpc;
 
+use Grpc\Connect;
+use Grpc\Exception;
+use Grpc\Internal\InterceptorChannel;
+use InvalidArgumentException;
+
 /**
  * Base class for generated client stubs. Stub methods are expected to call
  * _simpleRequest or _streamRequest and return the result.
@@ -45,9 +50,7 @@ class BaseStub
     {
         if (!method_exists('Grpc\ChannelCredentials', 'isDefaultRootsPemSet') ||
             !ChannelCredentials::isDefaultRootsPemSet()) {
-            $ssl_roots = file_get_contents(
-                dirname(__FILE__).'/../../../../etc/roots.pem'
-            );
+            $ssl_roots = file_get_contents(dirname(__FILE__, 2) . "/resources/roots.pem");
             ChannelCredentials::setDefaultRootsPem($ssl_roots);
         }
 
@@ -215,7 +218,7 @@ class BaseStub
         // is bad.
         $last_slash_idx = strrpos($method, '/');
         if ($last_slash_idx === false) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'service name must have a slash'
             );
         }
@@ -249,7 +252,7 @@ class BaseStub
         $metadata_copy = [];
         foreach ($metadata as $key => $value) {
             if (!preg_match('/^[.A-Za-z\d_-]+$/', $key)) {
-                throw new \InvalidArgumentException(
+                throw new InvalidArgumentException(
                     'Metadata keys must be nonempty strings containing only '.
                     'alphanumeric characters, hyphens, underscores and dots'
                 );
@@ -545,6 +548,43 @@ class BaseStub
         $call = $call_factory($method, $argument, $deserialize, $metadata, $options);
         return $call;
     }
+
+    /**
+     *
+     * @param string   $method      The name of the method to call
+     * @param mixed    $argument    The argument to the method
+     * @param callable $deserialize A function that deserializes the response
+     * @param array    $metadata    A metadata map to send to the server
+     *                              (optional)
+     * @param array    $options     An array of options (optional)
+     */
+    protected function _simpleRequestAsync($method,
+                                   $argument,
+                                   $deserialize,
+                                   $callback,
+                                   array $metadata = [],
+                                   array $options = [])
+    {
+        $options['client_async'] = true;
+
+        $call = new UnaryCall($this->channel,
+                              $method,
+                              $deserialize,
+                              $options);
+        $jwt_aud_uri = $this->_get_jwt_aud_uri($method);
+        if (is_callable($this->update_metadata)) {
+            $metadata = call_user_func($this->update_metadata,
+                                        $metadata,
+                                        $jwt_aud_uri);
+        }
+        $metadata = $this->_validate_and_normalize_metadata(
+            $metadata);
+
+        $call->callAsync($argument, $callback, $metadata, $options);
+
+        return $call;
+    }
+
 
     /**
      * Call a remote method that takes a stream of arguments and has a single

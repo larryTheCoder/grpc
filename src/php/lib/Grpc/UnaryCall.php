@@ -1,7 +1,7 @@
 <?php
 /*
  *
- * Copyright 2015 gRPC authors.
+ * Copyright 2024 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,24 @@
 
 namespace Grpc;
 
+use Closure;
+use Grpc\Call\ServerCallInterface;
+use Grpc\Status\RpcCallStatus;
+use LogicException;
+
 /**
  * Represents an active call that sends a single message and then gets a
  * single response.
- * 
+ *
  * @template T of \Google\Protobuf\Internal\Message
  */
-class UnaryCall extends AbstractCall
+class UnaryCall extends AbstractCall implements ServerCallInterface
 {
+    public function isServerReady(): bool
+    {
+        return true; // The server is always ready
+    }
+
     /**
      * Start the call.
      *
@@ -46,42 +56,32 @@ class UnaryCall extends AbstractCall
             OP_SEND_INITIAL_METADATA => $metadata,
             OP_SEND_MESSAGE => $message_array,
             OP_SEND_CLOSE_FROM_CLIENT => true,
-        ]);
+            OP_RECV_INITIAL_METADATA => true
+        ], function ($event) {
+            $this->metadata = $event->metadata;
+        });
     }
 
     /**
-     * Wait for the server to respond with data and a status.
-     *
-     * @return array{0: T|null, 1: \stdClass} [response data, status]
+     * @phpstan-param Closure(TReturn, RpcCallStatus): void $onMessage
      */
-    public function wait()
+    public function onStreamNext(Closure $onMessage): void
     {
         $batch = [
             OP_RECV_MESSAGE => true,
             OP_RECV_STATUS_ON_CLIENT => true,
         ];
-        if ($this->metadata === null) {
-            $batch[OP_RECV_INITIAL_METADATA] = true;
-        }
-        $event = $this->call->startBatch($batch);
-        if ($this->metadata === null) {
-            $this->metadata = $event->metadata;
-        }
-        $status = $event->status;
-        $this->trailing_metadata = $status->metadata;
 
-        return [$this->_deserializeResponse($event->message), $status];
+        $this->call->startBatch($batch, function ($event) use ($onMessage) {
+            $status = $event->status;
+            $this->trailing_metadata = $status->metadata;
+
+            $onMessage($this->_deserializeResponse($event->message), new RpcCallStatus($status->code, $status->reason, $status->details));
+        });
     }
 
-    /**
-     * @return mixed The metadata sent by the server
-     */
-    public function getMetadata()
+    public function onStreamCompleted(Closure $onCompleted): void
     {
-        if ($this->metadata === null) {
-            $event = $this->call->startBatch([OP_RECV_INITIAL_METADATA => true]);
-            $this->metadata = $event->metadata;
-        }
-        return $this->metadata;
+        throw new LogicException("Stream completion is always triggered immediately after receiving a message by remote server.");
     }
 }
