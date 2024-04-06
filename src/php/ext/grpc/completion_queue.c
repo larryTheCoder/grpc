@@ -48,7 +48,9 @@ bool grpc_php_drain_next_queue(bool shutdown, gpr_timespec deadline TSRMLS_DC) {
   GRPC_G(storage).draining_next_queue = true;
   do {
     event = grpc_completion_queue_next(GRPC_G(storage).next_queue, deadline, NULL);
-    if (event.type == GRPC_OP_COMPLETE) {
+    if (event.type == GRPC_OP_SHUTDOWN) {
+      break;
+    } else if (event.type == GRPC_OP_COMPLETE) {
       struct batch *batch = (struct batch *) event.tag;
 
       if (!shutdown) {
