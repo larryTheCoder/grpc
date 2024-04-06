@@ -17,7 +17,12 @@
  *
  */
 
-namespace Grpc;
+namespace Grpc\Server;
+
+use const Grpc\OP_RECV_CLOSE_ON_SERVER;
+use const Grpc\OP_SEND_INITIAL_METADATA;
+use const Grpc\OP_SEND_MESSAGE;
+use const Grpc\OP_SEND_STATUS_FROM_SERVER;
 
 /**
  * This is an experimental and incomplete implementation of gRPC server
