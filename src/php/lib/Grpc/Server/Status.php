@@ -17,7 +17,10 @@
  *
  */
 
-namespace Grpc;
+namespace Grpc\Server;
+
+use const Grpc\STATUS_OK;
+use const Grpc\STATUS_UNIMPLEMENTED;
 
 /**
  * This is an experimental and incomplete implementation of gRPC server

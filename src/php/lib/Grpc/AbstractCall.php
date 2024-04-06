@@ -19,6 +19,11 @@
 
 namespace Grpc;
 
+use Grpc\Call;
+use Grpc\CallCredentials;
+use Grpc\Channel;
+use Grpc\Timeval;
+
 /**
  * Class AbstractCall.
  * @package Grpc
@@ -32,6 +37,7 @@ abstract class AbstractCall
     protected $deserialize;
     protected $metadata;
     protected $trailing_metadata;
+    protected $is_async;
 
     /**
      * Create a new Call wrapper object.
@@ -57,7 +63,13 @@ abstract class AbstractCall
         } else {
             $deadline = Timeval::infFuture();
         }
-        $this->call = new Call($channel, $method, $deadline);
+        $clientAsync = $options['client_async'] ?? true;
+        if ($clientAsync) {
+            $this->call = new Call($channel, $method, $deadline, "", $clientAsync);
+        } else {
+            $this->call = new Call($channel, $method, $deadline);
+        }
+        $this->is_async = $clientAsync;
         $this->deserialize = $deserialize;
         $this->metadata = null;
         $this->trailing_metadata = null;

@@ -29,6 +29,7 @@ extern zend_class_entry *grpc_ce_call;
 /* Wrapper struct for grpc_call that can be associated with a PHP object */
 PHP_GRPC_WRAP_OBJECT_START(wrapped_grpc_call)
   bool owned;
+  bool client_async;
   grpc_call *wrapped;
   wrapped_grpc_channel* channel;
 PHP_GRPC_WRAP_OBJECT_END(wrapped_grpc_call)
@@ -38,6 +39,9 @@ static inline wrapped_grpc_call
   return (wrapped_grpc_call*)((char*)(obj) -
                               XtOffsetOf(wrapped_grpc_call, std));
 }
+
+/* Parses a grpc status code into a human readable code format */
+const char* grpc_status_code_to_string(grpc_status_code status);
 
 /* Creates and returns a PHP associative array of metadata from a C array of
  * call metadata */
