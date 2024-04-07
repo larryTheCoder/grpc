@@ -19,8 +19,8 @@
 #ifndef NET_GRPC_PHP_GRPC_BATCH_H_
 #define NET_GRPC_PHP_GRPC_BATCH_H_
 
-#include <grpc/grpc.h>
 #include <zend_API.h>
+#include <grpc/grpc.h>
 
 struct batch {
   grpc_call *wrapped;
